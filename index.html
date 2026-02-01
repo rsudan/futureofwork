@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Future of Work Forecaster</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            900: '#1B2A4A', // Primary
+                            800: '#2D4A7A', // Secondary
+                            700: '#385D96',
+                        },
+                        steel: '#4A6FA5', // Accent
+                        bg: '#F5F5F5', // Background
+                        paper: '#FFFFFF',
+                        text: '#333333'
+                    },
+                    fontFamily: {
+                        sans: ['Roboto', 'Segoe UI', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #F5F5F5;
+            color: #333333;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555; 
+        }
+
+        /* Card Styling */
+        .consulting-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+        }
+        .consulting-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Tab Active State */
+        .tab-btn.active {
+            border-bottom: 3px solid #1B2A4A;
+            color: #1B2A4A;
+            font-weight: 700;
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1B2A4A;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Editable Content Highlights */
+        [contenteditable]:hover {
+            background-color: #f9fafb;
+            outline: 1px dashed #cbd5e1;
+            cursor: text;
+        }
+        [contenteditable]:focus {
+            background-color: #fff;
+            outline: 2px solid #4A6FA5;
+        }
+
+        /* PDF Specifics */
+        .pdf-only { display: none; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-navy-900 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-chart-line text-steel text-xl"></i>
+                <h1 class="text-xl font-bold tracking-wide">Future of Work Forecaster</h1>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <!-- Model Selector -->
+                <div class="relative">
+                    <select id="modelSelect" class="bg-navy-800 text-white text-sm border border-navy-700 rounded px-3 py-1 focus:outline-none focus:border-steel">
+                        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                        <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                        <option value="gemini-3.0-flash">gemini-3.0-flash</option>
+                        <option value="gemini-3.0-pro">gemini-3.0-pro</option>
+                    </select>
+                </div>
+
+                <!-- Settings Icon -->
+                <button id="settingsBtn" class="text-gray-300 hover:text-white transition-colors">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        
+        <!-- Controls Section -->
+        <section class="bg-white rounded-lg shadow-sm p-6 mb-8 border border-gray-200">
+            <h2 class="text-navy-900 font-semibold mb-4 border-b pb-2">Research Parameters</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+                <!-- Search -->
+                <div class="md:col-span-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Topic or Industry</label>
+                    <input type="text" id="searchQuery" placeholder="e.g., Artificial Intelligence, Green Energy, or 'All Technologies'" 
+                           class="w-full rounded-md border-gray-300 shadow-sm border p-2 focus:border-navy-900 focus:ring-1 focus:ring-navy-900 outline-none">
+                </div>
+
+                <!-- Date Range -->
+                <div class="md:col-span-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Data Context Range</label>
+                    <div class="flex items-center gap-2">
+                        <input type="date" id="startDate" class="w-full rounded-md border border-gray-300 p-2 text-sm">
+                        <span class="text-gray-400">-</span>
+                        <input type="date" id="endDate" class="w-full rounded-md border border-gray-300 p-2 text-sm">
+                    </div>
+                </div>
+
+                <!-- Horizon -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Forecast Horizon</label>
+                    <select id="timeHorizon" class="w-full rounded-md border border-gray-300 p-2 bg-white">
+                        <option value="5 Years">5 Years</option>
+                        <option value="10 Years">10 Years</option>
+                        <option value="20 Years">20 Years</option>
+                    </select>
+                </div>
+
+                <!-- Button -->
+                <div class="md:col-span-2">
+                    <button id="generateBtn" class="w-full bg-navy-900 hover:bg-navy-800 text-white font-medium py-2 px-4 rounded shadow-md transition-all flex justify-center items-center gap-2">
+                        <span>Generate</span>
+                        <i class="fa-solid fa-bolt"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden flex-col items-center justify-center py-20">
+            <div class="loader mb-4"></div>
+            <p id="loadingText" class="text-navy-800 font-medium">Analyzing Global Technology Trends...</p>
+            <p class="text-sm text-gray-500 mt-2">Connecting to Knowledge Graph & Verified Sources</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsContainer" class="hidden space-y-8">
+            
+            <!-- Step 1: Tech Trends (Split by Source) -->
+            <section>
+                <div class="flex justify-between items-end mb-6">
+                    <h3 class="text-2xl font-bold text-navy-900">Emerging Technology Signals</h3>
+                    <div class="text-right">
+                        <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">
+                            <i class="fa-solid fa-check-circle mr-1"></i> Google Search Grounding Active
+                        </span>
+                        <div class="text-xs text-gray-500 italic mt-1">Source: Patent & Publication Analysis</div>
+                    </div>
+                </div>
+                
+                <!-- Dynamic Content Container -->
+                <div id="trendsContainer" class="space-y-10">
+                    <!-- Patents Grid and Science Grid will be injected here -->
+                </div>
+            </section>
+
+            <!-- Step 2: Future Insights Dashboard -->
+            <section class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                <div class="bg-navy-50 border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-navy-900">Strategic Forecast</h3>
+                    <div class="flex space-x-2">
+                         <button id="tab-industries" class="tab-btn active px-4 py-2 text-sm font-medium text-navy-900 hover:text-navy-700 transition-colors">Impacted Industries</button>
+                         <button id="tab-jobs" class="tab-btn px-4 py-2 text-sm font-medium text-gray-500 hover:text-navy-700 transition-colors">New Job Categories</button>
+                         <button id="tab-skills" class="tab-btn px-4 py-2 text-sm font-medium text-gray-500 hover:text-navy-700 transition-colors">Skill Clusters</button>
+                    </div>
+                </div>
+
+                <div class="p-6 min-h-[300px]">
+                    <div id="content-industries" class="tab-content block animate-fadeIn">
+                        <!-- Dynamic Content -->
+                    </div>
+                    <div id="content-jobs" class="tab-content hidden animate-fadeIn">
+                        <!-- Dynamic Content -->
+                    </div>
+                    <div id="content-skills" class="tab-content hidden animate-fadeIn">
+                        <!-- Dynamic Content -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Export Action -->
+            <div class="flex justify-end pt-4 pb-12">
+                <button id="exportPdfBtn" class="bg-white border border-navy-900 text-navy-900 hover:bg-navy-50 font-semibold py-2 px-6 rounded shadow flex items-center gap-2">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    Export Strategic Report
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b bg-navy-900 text-white rounded-t-lg">
+                <h3 class="font-bold text-lg">System Configuration</h3>
+                <button id="closeSettings" class="hover:text-gray-300"><i class="fa-solid fa-times"></i></button>
+            </div>
+            
+            <div class="flex border-b border-gray-200">
+                <button id="setTab-api" class="flex-1 py-3 text-sm font-medium text-navy-900 border-b-2 border-navy-900 bg-gray-50">API Configuration</button>
+                <button id="setTab-prompt" class="flex-1 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50">Prompt Management</button>
+            </div>
+
+            <div class="p-6 overflow-y-auto flex-grow">
+                
+                <!-- API Tab -->
+                <div id="setting-content-api" class="block">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Google Gemini API Key</label>
+                    <div class="flex gap-2">
+                        <input type="password" id="apiKeyInput" class="flex-grow rounded border border-gray-300 p-2 text-sm" placeholder="Enter API Key">
+                        <button id="saveKeyBtn" class="bg-navy-800 text-white px-4 py-2 rounded text-sm hover:bg-navy-700">Save</button>
+                    </div>
+                    <div class="mt-4 flex items-center gap-2">
+                        <button id="testConnectionBtn" class="text-sm text-steel underline hover:text-navy-900">Test Connection</button>
+                        <span id="connectionStatus" class="w-3 h-3 rounded-full bg-gray-300"></span>
+                        <span id="connectionMsg" class="text-xs text-gray-500">Not Tested</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-4">Key is stored locally in your browser session.</p>
+                </div>
+
+                <!-- Prompts Tab -->
+                <div id="setting-content-prompt" class="hidden space-y-6">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm font-bold text-navy-900">Trend Discovery Prompt</label>
+                            <button onclick="resetPrompt('trendDiscovery')" class="text-xs text-steel hover:underline">Reset</button>
+                        </div>
+                        <textarea id="prompt-trendDiscovery" class="w-full h-32 p-2 text-xs font-mono border rounded bg-gray-50 focus:bg-white"></textarea>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm font-bold text-navy-900">Work Extrapolation Prompt</label>
+                            <button onclick="resetPrompt('workExtrapolation')" class="text-xs text-steel hover:underline">Reset</button>
+                        </div>
+                        <textarea id="prompt-workExtrapolation" class="w-full h-32 p-2 text-xs font-mono border rounded bg-gray-50 focus:bg-white"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t bg-gray-50 flex justify-end rounded-b-lg">
+                <button id="closeSettingsBottom" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Element for PDF Generation (Clean Template) -->
+    <div id="pdf-template" class="hidden">
+        <!-- Content injected via JS -->
+    </div>
+
+    <script>
+        // --- Constants & Config ---
+        const DEFAULT_PROMPTS = {
+            trendDiscovery: {
+                label: "Analyze Emerging Technologies",
+                text: `Act as a technology strategist. Based on the following search focus: [USER_QUERY] and the data period [DATE_RANGE], identify 10 emerging technology themes. 
+                
+                Separate your analysis into two categories:
+                1. 5 trends from PATENT data (indicating commercial readiness/IP).
+                2. 5 trends from SCIENTIFIC PUBLICATIONS (indicating early-stage research).
+                
+                Use the provided search tool to verify these trends.
+                
+                For each theme, provide: 
+                - A clear title.
+                - A maturity level assessment (e.g., Embryonic, Growing, Mature).
+                - A brief summary of its potential disruption (max 30 words).
+                - A key verified source (Publisher, Institution, or Journal name).
+                - A direct URL to the verified source.
+                
+                IMPORTANT: Return ONLY a raw JSON object with two arrays. No markdown formatting.
+                Schema: {
+                  "patents": [{"title": "string", "maturity": "string", "summary": "string", "source": "string", "source_url": "string"}],
+                  "publications": [{"title": "string", "maturity": "string", "summary": "string", "source": "string", "source_url": "string"}]
+                }`
+            },
+            workExtrapolation: {
+                label: "Forecast Jobs & Skills",
+                text: `Act as a future-of-work consultant. Given these technology trends from Patents and Science: [TECH_TRENDS], forecast the landscape for a [TIME_HORIZON] horizon. 
+                1. Impacted Industries: 5 sectors with brief rationale.
+                2. New Job Categories: 5 roles that will emerge with brief descriptions.
+                3. Skill Clusters: List 6 Foundational/Soft Skills and 6 Specialized/Technical Skills.
+                
+                IMPORTANT: Return ONLY a raw JSON object. No markdown formatting.
+                Schema: {
+                    "industries": [{"name": "string", "rationale": "string"}],
+                    "jobs": [{"role": "string", "description": "string"}],
+                    "skills": {
+                        "foundational": ["string", "string", "string", "string", "string", "string"],
+                        "technical": ["string", "string", "string", "string", "string", "string"]
+                    }
+                }`
+            }
+        };
+
+        // --- State Management ---
+        const state = {
+            apiKey: sessionStorage.getItem('gemini_api_key') || '',
+            prompts: JSON.parse(sessionStorage.getItem('app_prompts')) || JSON.parse(JSON.stringify(DEFAULT_PROMPTS)),
+            techTrendsData: null,
+            forecastData: null
+        };
+
+        // --- DOM Elements ---
+        const els = {
+            // Inputs
+            searchQuery: document.getElementById('searchQuery'),
+            startDate: document.getElementById('startDate'),
+            endDate: document.getElementById('endDate'),
+            timeHorizon: document.getElementById('timeHorizon'),
+            modelSelect: document.getElementById('modelSelect'),
+            generateBtn: document.getElementById('generateBtn'),
+            
+            // Layout
+            loadingState: document.getElementById('loadingState'),
+            loadingText: document.getElementById('loadingText'),
+            resultsContainer: document.getElementById('resultsContainer'),
+            trendsContainer: document.getElementById('trendsContainer'),
+            
+            // Tabs & Content
+            tabs: {
+                industries: document.getElementById('tab-industries'),
+                jobs: document.getElementById('tab-jobs'),
+                skills: document.getElementById('tab-skills')
+            },
+            content: {
+                industries: document.getElementById('content-industries'),
+                jobs: document.getElementById('content-jobs'),
+                skills: document.getElementById('content-skills')
+            },
+
+            // Settings
+            settingsBtn: document.getElementById('settingsBtn'),
+            settingsModal: document.getElementById('settingsModal'),
+            closeSettings: document.getElementById('closeSettings'),
+            closeSettingsBottom: document.getElementById('closeSettingsBottom'),
+            apiKeyInput: document.getElementById('apiKeyInput'),
+            saveKeyBtn: document.getElementById('saveKeyBtn'),
+            testConnectionBtn: document.getElementById('testConnectionBtn'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            connectionMsg: document.getElementById('connectionMsg'),
+            
+            // Settings Tabs
+            setTabApi: document.getElementById('setTab-api'),
+            setTabPrompt: document.getElementById('setTab-prompt'),
+            setContentApi: document.getElementById('setting-content-api'),
+            setContentPrompt: document.getElementById('setting-content-prompt'),
+            
+            // Prompt Textareas
+            promptTrend: document.getElementById('prompt-trendDiscovery'),
+            promptWork: document.getElementById('prompt-workExtrapolation'),
+
+            // Export
+            exportPdfBtn: document.getElementById('exportPdfBtn')
+        };
+
+        // --- Initialization ---
+        function init() {
+            // Set default dates
+            const today = new Date();
+            els.endDate.valueAsDate = today;
+            const lastYear = new Date();
+            lastYear.setFullYear(today.getFullYear() - 1);
+            els.startDate.valueAsDate = lastYear;
+
+            // Load Prompts into Textareas
+            els.promptTrend.value = state.prompts.trendDiscovery.text;
+            els.promptWork.value = state.prompts.workExtrapolation.text;
+            
+            // Load API Key mask
+            if(state.apiKey) els.apiKeyInput.value = "********";
+
+            setupEventListeners();
+        }
+
+        function setupEventListeners() {
+            // Modal Toggles
+            els.settingsBtn.addEventListener('click', () => els.settingsModal.classList.remove('hidden'));
+            const close = () => els.settingsModal.classList.add('hidden');
+            els.closeSettings.addEventListener('click', close);
+            els.closeSettingsBottom.addEventListener('click', close);
+
+            // Settings Tabs
+            els.setTabApi.addEventListener('click', () => switchSettingsTab('api'));
+            els.setTabPrompt.addEventListener('click', () => switchSettingsTab('prompt'));
+
+            // API Key Logic
+            els.saveKeyBtn.addEventListener('click', () => {
+                const val = els.apiKeyInput.value;
+                if(val && val !== "********") {
+                    state.apiKey = val;
+                    sessionStorage.setItem('gemini_api_key', val);
+                    alert('API Key Saved to Session');
+                }
+            });
+
+            els.testConnectionBtn.addEventListener('click', testApiConnection);
+
+            // Prompt Saving
+            const savePrompts = () => {
+                state.prompts.trendDiscovery.text = els.promptTrend.value;
+                state.prompts.workExtrapolation.text = els.promptWork.value;
+                sessionStorage.setItem('app_prompts', JSON.stringify(state.prompts));
+            };
+            els.promptTrend.addEventListener('change', savePrompts);
+            els.promptWork.addEventListener('change', savePrompts);
+
+            // Main Generation
+            els.generateBtn.addEventListener('click', runForecastPipeline);
+
+            // Result Tabs
+            Object.keys(els.tabs).forEach(key => {
+                els.tabs[key].addEventListener('click', () => switchResultTab(key));
+            });
+
+            // Export
+            els.exportPdfBtn.addEventListener('click', generatePDF);
+        }
+
+        // --- Logic: Settings & Tabs ---
+
+        function switchSettingsTab(tab) {
+            if(tab === 'api') {
+                els.setTabApi.classList.add('border-b-2', 'border-navy-900', 'text-navy-900', 'bg-gray-50');
+                els.setTabApi.classList.remove('text-gray-500');
+                els.setTabPrompt.classList.remove('border-b-2', 'border-navy-900', 'text-navy-900', 'bg-gray-50');
+                els.setTabPrompt.classList.add('text-gray-500');
+                els.setContentApi.classList.remove('hidden');
+                els.setContentPrompt.classList.add('hidden');
+            } else {
+                els.setTabPrompt.classList.add('border-b-2', 'border-navy-900', 'text-navy-900', 'bg-gray-50');
+                els.setTabPrompt.classList.remove('text-gray-500');
+                els.setTabApi.classList.remove('border-b-2', 'border-navy-900', 'text-navy-900', 'bg-gray-50');
+                els.setTabApi.classList.add('text-gray-500');
+                els.setContentPrompt.classList.remove('hidden');
+                els.setContentApi.classList.add('hidden');
+            }
+        }
+
+        function switchResultTab(key) {
+            // Reset all
+            Object.values(els.tabs).forEach(t => {
+                t.classList.remove('active', 'text-navy-900');
+                t.classList.add('text-gray-500');
+            });
+            Object.values(els.content).forEach(c => c.classList.add('hidden'));
+
+            // Set active
+            els.tabs[key].classList.add('active', 'text-navy-900');
+            els.tabs[key].classList.remove('text-gray-500');
+            els.content[key].classList.remove('hidden');
+        }
+
+        function resetPrompt(key) {
+            if(confirm("Reset this prompt to default?")) {
+                state.prompts[key].text = DEFAULT_PROMPTS[key].text;
+                if(key === 'trendDiscovery') els.promptTrend.value = DEFAULT_PROMPTS[key].text;
+                if(key === 'workExtrapolation') els.promptWork.value = DEFAULT_PROMPTS[key].text;
+                sessionStorage.setItem('app_prompts', JSON.stringify(state.prompts));
+            }
+        }
+
+        // --- Logic: API Interactions ---
+
+        // Helper to clean Markdown JSON
+        function cleanJsonString(str) {
+            return str.replace(/```json/g, '').replace(/```/g, '').trim();
+        }
+
+        async function callGemini(promptText) {
+            // Environment key fallback
+            const apiKeyToUse = state.apiKey || ""; 
+            
+            let finalKey = apiKeyToUse;
+            if(!finalKey && typeof apiKey !== 'undefined') finalKey = apiKey;
+
+            if (!finalKey) throw new Error("API Key is missing. Please check Settings.");
+
+            const model = els.modelSelect.value;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${finalKey}`;
+
+            // Add Grounding Tools
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }],
+                tools: [{ google_search: {} }] 
+            };
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error?.message || "API Request Failed");
+            }
+
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        async function testApiConnection() {
+            els.connectionStatus.className = "w-3 h-3 rounded-full bg-yellow-400 animate-pulse";
+            els.connectionMsg.innerText = "Testing...";
+            try {
+                await callGemini("Say Hello");
+                els.connectionStatus.className = "w-3 h-3 rounded-full bg-green-500";
+                els.connectionMsg.innerText = "Connected";
+            } catch (e) {
+                els.connectionStatus.className = "w-3 h-3 rounded-full bg-red-500";
+                els.connectionMsg.innerText = "Error: " + e.message;
+            }
+        }
+
+        // --- Logic: Pipeline Workflow ---
+
+        async function runForecastPipeline() {
+            // Validation
+            const query = els.searchQuery.value.trim();
+            if(!query) { alert("Please enter a topic."); return; }
+            
+            // UI Reset
+            els.loadingState.classList.remove('hidden');
+            els.resultsContainer.classList.add('hidden');
+            els.loadingText.innerText = "Scanning 10 Key Technology Themes (Patents & Science)...";
+            
+            try {
+                // --- Step 1: Trend Discovery ---
+                const dateRangeStr = `${els.startDate.value} to ${els.endDate.value}`;
+                let prompt1 = state.prompts.trendDiscovery.text
+                    .replace('[USER_QUERY]', query || "All Emerging Technologies")
+                    .replace('[DATE_RANGE]', dateRangeStr);
+                
+                const rawRes1 = await callGemini(prompt1);
+                const trendsJson = JSON.parse(cleanJsonString(rawRes1));
+                state.techTrendsData = trendsJson;
+                
+                renderTrends(trendsJson);
+
+                // --- Step 2: Work Extrapolation ---
+                els.loadingText.innerText = "Extrapolating Future Industries, Jobs & Skills...";
+                
+                // Combine both lists for the second prompt
+                const allTrends = [...(trendsJson.patents || []), ...(trendsJson.publications || [])];
+                const trendSummary = allTrends.map(t => `${t.title}: ${t.summary}`).join("; ");
+                const horizon = els.timeHorizon.value;
+                
+                let prompt2 = state.prompts.workExtrapolation.text
+                    .replace('[TECH_TRENDS]', trendSummary)
+                    .replace('[TIME_HORIZON]', horizon);
+
+                const rawRes2 = await callGemini(prompt2);
+                const forecastJson = JSON.parse(cleanJsonString(rawRes2));
+                state.forecastData = forecastJson;
+
+                renderForecast(forecastJson);
+
+                // --- Finalize ---
+                els.loadingState.classList.add('hidden');
+                els.resultsContainer.classList.remove('hidden');
+
+            } catch (error) {
+                els.loadingState.classList.add('hidden');
+                alert("Error generating forecast: " + error.message);
+                console.error(error);
+            }
+        }
+
+        // --- Rendering Functions ---
+
+        function renderTrends(data) {
+            els.trendsContainer.innerHTML = "";
+            
+            // Helper to render a section
+            const createSection = (title, iconClass, iconColor, items) => {
+                if(!items || items.length === 0) return;
+
+                const section = document.createElement('div');
+                section.className = "trend-section";
+                
+                const header = document.createElement('h4');
+                header.className = "text-lg font-bold text-navy-800 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2";
+                header.innerHTML = `<i class="${iconClass} ${iconColor}"></i> ${title}`;
+                section.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4"; // 5 cols for 5 items usually
+
+                items.forEach(trend => {
+                    const card = document.createElement('div');
+                    card.className = "consulting-card h-full";
+                    
+                    // Color code maturity
+                    let matColor = "bg-blue-100 text-blue-800";
+                    if(trend.maturity.toLowerCase().includes('embryonic')) matColor = "bg-purple-100 text-purple-800";
+                    if(trend.maturity.toLowerCase().includes('mature')) matColor = "bg-green-100 text-green-800";
+
+                    card.innerHTML = `
+                        <div class="bg-navy-900 text-white p-3 rounded-t-lg">
+                            <h4 class="font-bold text-sm leading-tight" contenteditable="true">${trend.title}</h4>
+                        </div>
+                        <div class="p-4 flex-grow flex flex-col justify-between">
+                            <div>
+                                <span class="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full w-fit mb-2 ${matColor}" contenteditable="true">${trend.maturity}</span>
+                                <p class="text-xs text-gray-600 leading-relaxed mb-3" contenteditable="true">${trend.summary}</p>
+                            </div>
+                            <div class="border-t pt-2 mt-1">
+                                <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Verified By</span>
+                                <a href="${trend.source_url || '#'}" target="_blank" class="block text-[10px] text-steel font-medium truncate hover:underline" contenteditable="true">
+                                    <i class="fa-solid fa-link mr-1"></i> ${trend.source || "Source"}
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+                
+                section.appendChild(grid);
+                els.trendsContainer.appendChild(section);
+            };
+
+            createSection("Patent Analysis (Commercial Signals)", "fa-solid fa-certificate", "text-orange-600", data.patents);
+            createSection("Scientific Literature (Research Signals)", "fa-solid fa-flask", "text-purple-600", data.publications);
+        }
+
+        function renderForecast(data) {
+            // Industries
+            els.content.industries.innerHTML = `<div class="grid gap-4">
+                ${data.industries.map(ind => `
+                    <div class="border-l-4 border-steel bg-gray-50 p-4 rounded-r shadow-sm">
+                        <h4 class="font-bold text-navy-800 text-lg mb-1" contenteditable="true">${ind.name}</h4>
+                        <p class="text-gray-600 text-sm" contenteditable="true">${ind.rationale}</p>
+                    </div>
+                `).join('')}
+            </div>`;
+
+            // Jobs
+            els.content.jobs.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                ${data.jobs.map(job => `
+                    <div class="bg-white border border-gray-200 p-4 rounded shadow-sm hover:shadow-md transition text-center">
+                        <div class="w-10 h-10 bg-navy-100 text-navy-900 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fa-solid fa-user-astronaut"></i>
+                        </div>
+                        <h4 class="font-bold text-navy-900 mb-2" contenteditable="true">${job.role}</h4>
+                        <p class="text-xs text-gray-500" contenteditable="true">${job.description}</p>
+                    </div>
+                `).join('')}
+            </div>`;
+
+            // Skills
+            els.content.skills.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-navy-900 font-bold mb-3 border-b pb-1">Foundational / Soft Skills</h4>
+                        <ul class="space-y-2">
+                            ${data.skills.foundational.map(s => `
+                                <li class="flex items-center gap-2">
+                                    <i class="fa-solid fa-check text-green-500 text-xs"></i>
+                                    <span class="text-sm text-gray-700 bg-white border px-3 py-1 rounded w-full" contenteditable="true">${s}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-navy-900 font-bold mb-3 border-b pb-1">Specialized / Technical Skills</h4>
+                        <ul class="space-y-2">
+                            ${data.skills.technical.map(s => `
+                                <li class="flex items-center gap-2">
+                                    <i class="fa-solid fa-code text-steel text-xs"></i>
+                                    <span class="text-sm text-gray-700 bg-white border px-3 py-1 rounded w-full" contenteditable="true">${s}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Logic: PDF Generation ---
+
+        function generatePDF() {
+            // Create a specific container for PDF content to format it like a document
+            const element = document.createElement('div');
+            element.style.padding = '40px';
+            element.style.fontFamily = 'Helvetica, Arial, sans-serif';
+            element.style.color = '#333';
+            element.style.backgroundColor = '#fff';
+
+            const today = new Date().toLocaleDateString();
+            const horizon = els.timeHorizon.value;
+            const topic = els.searchQuery.value || "General Technology";
+
+            // Helper for PDF grid generation
+            const generateGridHTML = (section) => {
+                const title = section.querySelector('h4').innerText;
+                const cards = Array.from(section.querySelectorAll('.consulting-card')).map(card => {
+                     const title = card.querySelector('h4').innerText;
+                     const badge = card.querySelector('span.rounded-full').innerText;
+                     const summary = card.querySelector('p.text-xs').innerText;
+                     const source = card.querySelector('.fa-link').parentElement.innerText;
+                     
+                     return `
+                        <div style="page-break-inside: avoid; border: 1px solid #ccc; margin-bottom: 10px; border-radius: 4px;">
+                            <div style="background-color: #1B2A4A; color: white; padding: 8px; font-weight: bold; font-size: 11px;">
+                                ${title}
+                            </div>
+                            <div style="padding: 10px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                    <span style="font-size: 9px; font-weight: bold; text-transform: uppercase; color: #666;">${badge}</span>
+                                    <span style="font-size: 8px; color: #4A6FA5; font-style: italic;">${source}</span>
+                                </div>
+                                <div style="font-size: 10px; line-height: 1.4;">${summary}</div>
+                            </div>
+                        </div>
+                     `;
+                }).join('');
+
+                return `
+                    <h3 style="color: #2D4A7A; border-bottom: 1px solid #eee; padding-bottom: 5px; margin: 20px 0 10px 0;">${title}</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                        ${cards}
+                    </div>
+                `;
+            };
+
+            let trendsContent = '';
+            const sections = els.trendsContainer.querySelectorAll('.trend-section');
+            sections.forEach(sec => trendsContent += generateGridHTML(sec));
+
+            // Build PDF HTML
+            element.innerHTML = `
+                <!-- Cover Page -->
+                <div style="height: 900px; display: flex; flex-direction: column; justify-content: center;">
+                    <h1 style="color: #1B2A4A; font-size: 36px; font-weight: bold; margin-bottom: 10px;">Future of Work Forecast</h1>
+                    <div style="width: 100px; height: 4px; background-color: #4A6FA5; margin-bottom: 30px;"></div>
+                    <h2 style="font-size: 24px; color: #555;">Topic: ${topic}</h2>
+                    <h3 style="font-size: 18px; color: #777;">Horizon: ${horizon}</h3>
+                    <p style="margin-top: 50px; font-size: 12px; color: #999;">Generated on: ${today}</p>
+                    <p style="font-size: 12px; color: #999; font-weight: bold;">CONFIDENTIAL - INTERNAL USE ONLY</p>
+                </div>
+                <div class="html2pdf__page-break"></div>
+
+                <!-- Trends Section -->
+                <h2 style="color: #1B2A4A; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">Emerging Technology Landscape</h2>
+                ${trendsContent}
+                <div class="html2pdf__page-break"></div>
+
+                <!-- Insights Section -->
+                <h2 style="color: #1B2A4A; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">Strategic Implications</h2>
+                
+                <h3 style="color: #2D4A7A; font-size: 16px; margin-top: 20px;">Impacted Industries</h3>
+                <div style="background-color: #EBF0F7; padding: 15px; border-left: 4px solid #1B2A4A; margin-bottom: 20px;">
+                    ${els.content.industries.innerText.split('\n').filter(line => line.trim().length > 0).map(l => `<p style="margin-bottom: 5px; font-size: 12px;">${l}</p>`).join('')}
+                </div>
+
+                <h3 style="color: #2D4A7A; font-size: 16px; margin-top: 20px;">New Job Categories</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                     ${Array.from(els.content.jobs.children[0].children).map(job => `
+                        <div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                            <strong style="color: #1B2A4A; font-size: 12px;">${job.querySelector('h4').innerText}</strong>
+                            <p style="font-size: 10px; color: #555; margin-top: 5px;">${job.querySelector('p').innerText}</p>
+                        </div>
+                     `).join('')}
+                </div>
+
+                <h3 style="color: #2D4A7A; font-size: 16px; margin-top: 20px;">Required Skill Clusters</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div style="border: 1px solid #eee; padding: 15px;">
+                        <strong style="display:block; margin-bottom: 10px; color: #4A6FA5;">Foundational</strong>
+                        <ul style="font-size: 11px; padding-left: 20px; line-height: 1.6;">
+                             ${els.content.skills.querySelectorAll('ul')[0].innerText.split('\n').filter(s=>s.trim()).map(s => `<li>${s}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div style="border: 1px solid #eee; padding: 15px;">
+                        <strong style="display:block; margin-bottom: 10px; color: #4A6FA5;">Specialized</strong>
+                        <ul style="font-size: 11px; padding-left: 20px; line-height: 1.6;">
+                             ${els.content.skills.querySelectorAll('ul')[1].innerText.split('\n').filter(s=>s.trim()).map(s => `<li>${s}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            const opt = {
+                margin:       10,
+                filename:     `Future_Work_Forecast_${horizon.replace(' ','_')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // Run Init
+        window.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
